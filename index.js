@@ -30,6 +30,7 @@ const hotelSchema = new mongoose.Schema(
   {
     id: Number,
     type: String,
+    stars: Number,
     name: String,
     address: String,
     location: {
@@ -446,14 +447,23 @@ app.delete("/api/hotels/:id", async (req, res) => {
 
 // 404 Handler
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found",
+  // Create a compact field combining stars and unit count for tighter UI display
+  const hotelsData = hotels.map((h) => {
+    const obj = typeof h.toObject === "function" ? h.toObject() : h;
+    obj.starsAndUnits = `${obj.stars || 0}★ · ${
+      obj.units ? obj.units.length : 0
+    }`;
+    return obj;
   });
-});
 
-// Error Handler
-app.use((err, req, res, next) => {
+  res.status(200).json({
+    success: true,
+    count: hotels.length,
+    total,
+    page: pageNum,
+    pages: Math.ceil(total / limitNum),
+    data: hotelsData,
+  });
   console.error(err.stack);
   res.status(500).json({
     success: false,
