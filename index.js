@@ -55,6 +55,11 @@ const hotelSchema = new mongoose.Schema(
     units: [
       {
         id: Number,
+
+        name: String,
+        quanntity: Number,
+        squareMeters: Number,
+
         photos: [String],
         numOftwinBeds: Number,
         numOfSingleBeds: Number,
@@ -90,6 +95,12 @@ app.get("/", (req, res) => {
       "GET /api/hotels": "Get all hotels (with search, pagination)",
       "GET /api/hotels/:id": "Get single hotel by ID",
       "POST /api/hotels": "Create new hotel",
+      "POST /api/hotels/:id/units":
+        "Create a unit (room) for a hotel",
+      "PUT /api/hotels/:id/units/:unitId":
+        "Update a unit for a hotel",
+      "DELETE /api/hotels/:id/units/:unitId":
+        "Delete a unit for a hotel",
       "PUT /api/hotels/:id": "Update hotel",
       "DELETE /api/hotels/:id": "Delete hotel",
       "POST /api/hotels/seed": "Seed database with sample data",
@@ -144,13 +155,170 @@ app.get("/api/hotels", async (req, res) => {
 });
 
 // ============================================
+// UNIT (ROOM) ROUTES
+// Create unit: POST /api/hotels/:id/units
+// Update unit: PUT /api/hotels/:id/units/:unitId
+// Delete unit: DELETE /api/hotels/:id/units/:unitId
+// ============================================
+
+app.post("/api/hotels/:id/units", async (req, res) => {
+  try {
+    const hotel = await Hotel.findOne({ id: Number(req.params.id) });
+
+    if (!hotel) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Hotel not found" });
+    }
+
+    const {
+      name,
+      quanntity,
+      squareMeters,
+      photos = [],
+      numOftwinBeds,
+      numOfSingleBeds,
+      numOfKingBeds,
+      numOfQueenBeds,
+      amenities = [],
+      numOfFits,
+      pricePerNight = [],
+    } = req.body;
+
+    if (!name || quanntity == null || squareMeters == null) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Missing required unit fields: name, quanntity, squareMeters",
+      });
+    }
+
+    const maxUnitId =
+      hotel.units && hotel.units.length
+        ? Math.max(...hotel.units.map((u) => u.id || 0))
+        : 0;
+    const newUnit = {
+      id: maxUnitId + 1,
+      name,
+      quanntity,
+      squareMeters,
+      photos,
+      numOftwinBeds,
+      numOfSingleBeds,
+      numOfKingBeds,
+      numOfQueenBeds,
+      amenities,
+      numOfFits,
+      pricePerNight,
+    };
+
+    hotel.units.push(newUnit);
+    await hotel.save();
+
+    res
+      .status(201)
+      .json({ success: true, message: "Unit added", data: newUnit });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+});
+
+app.put("/api/hotels/:id/units/:unitId", async (req, res) => {
+  try {
+    const hotel = await Hotel.findOne({ id: Number(req.params.id) });
+
+    if (!hotel)
+      return res
+        .status(404)
+        .json({ success: false, message: "Hotel not found" });
+
+    const unitId = Number(req.params.unitId);
+    const unit = hotel.units.find(
+      (u) => u.id === unitId || String(u.id) === String(unitId),
+    );
+
+    if (!unit)
+      return res
+        .status(404)
+        .json({ success: false, message: "Unit not found" });
+
+    // Only allow updates to known fields
+    const updatable = [
+      "name",
+      "quanntity",
+      "squareMeters",
+      "photos",
+      "numOftwinBeds",
+      "numOfSingleBeds",
+      "numOfKingBeds",
+      "numOfQueenBeds",
+      "amenities",
+      "numOfFits",
+      "pricePerNight",
+    ];
+
+    updatable.forEach((key) => {
+      if (req.body[key] !== undefined) unit[key] = req.body[key];
+    });
+
+    await hotel.save();
+
+    res
+      .status(200)
+      .json({ success: true, message: "Unit updated", data: unit });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+});
+
+app.delete("/api/hotels/:id/units/:unitId", async (req, res) => {
+  try {
+    const hotel = await Hotel.findOne({ id: Number(req.params.id) });
+
+    if (!hotel)
+      return res
+        .status(404)
+        .json({ success: false, message: "Hotel not found" });
+
+    const unitId = Number(req.params.unitId);
+
+    const initialLen = hotel.units.length;
+    hotel.units = hotel.units.filter((u) => Number(u.id) !== unitId);
+
+    if (hotel.units.length === initialLen) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Unit not found" });
+    }
+
+    await hotel.save();
+
+    res.status(200).json({ success: true, message: "Unit deleted" });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+});
+
+// ============================================
 // GET SINGLE HOTEL
 // @route   GET /api/hotels/:id
 // @desc    Get hotel by ID
 // ============================================
 app.get("/api/hotels/:id", async (req, res) => {
   try {
-    const hotel = await Hotel.findOne({ id: req.params.id });
+    const hotel = await Hotel.findOne({ id: Number(req.params.id) });
 
     if (!hotel) {
       return res.status(404).json({
@@ -249,6 +417,7 @@ app.put("/api/hotels/:id", async (req, res) => {
 // @desc    Delete hotel by ID
 // ============================================
 app.delete("/api/hotels/:id", async (req, res) => {
+  console.log({ id: req.params.id });
   try {
     const hotel = await Hotel.findOneAndDelete({
       _id: req.params.id,
