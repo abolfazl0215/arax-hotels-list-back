@@ -34,10 +34,7 @@ const hotelSchema = new mongoose.Schema(
     stars: Number,
     name: String,
     address: String,
-    location: {
-      lat: Number,
-      lng: Number,
-    },
+    location: String,
     tel: [String],
     email: String,
     website: String,
@@ -146,6 +143,368 @@ app.get("/", (req, res) => {
   });
 });
 
+app.post("/addNewHotels", async (req, res) => {
+  const hotelsData = [
+    {
+      name: "Grand hotel",
+      address: "Abovyan street14",
+      options: ["pool", "gym", "spa"],
+      tel: ["+374 10 591 600", "+374 10 591 699"],
+      email: "sales@grandhotelyerevan.com",
+      website: "grandhotelyerevan.com",
+      location: "3' center",
+    },
+    {
+      name: "Radisson blue",
+      address: "Azatutyan Ave",
+      options: ["pool", "gym", "spa"],
+      tel: ["+374 10 21 99 00"],
+      email: "sales.radssonbluhotel@gmail.com",
+      website: "radissonhotels.com",
+      location: "5' center",
+    },
+    {
+      name: "Holliday Inn yerevan",
+      address: "Amiryan street2",
+      options: ["pool", "gym", "spa"],
+      tel: ["+374 60 83 30 00"],
+      email: "holidayinnyerevan@ihg.com",
+      website: "ihg.com",
+      location: "center",
+    },
+    {
+      name: "D.T Hilton",
+      address: "Grigor Lusavorich street",
+      options: ["pool", "gym", "spa"],
+      tel: ["+374 11 55 53 33"],
+      email: "evnye.hotel@hilton.com",
+      website: "hilton.com",
+      location: "center",
+    },
+    {
+      name: "The Alexander",
+      address: "Abovyan street3/4",
+      options: ["pool", "gym", "spa"],
+      tel: ["+374 11 20 60 00"],
+      email: "info@thealexanderyerevan.com",
+      website: "marriott.com",
+      location: "5' center",
+    },
+    {
+      name: "Venice hotel complex",
+      address: "Movases khorenatsi street",
+      options: ["pool", "gym", "spa"],
+      tel: ["+374 60 44 30 40"],
+      email: "info@venicehotel.am",
+      website: "venicehotel.am",
+      location: "5' center",
+    },
+    {
+      name: "Double tree by hilton",
+      address: "Grigor lusavorich4/2",
+      options: ["pool", "gym", "spa"],
+      tel: ["+374 11 5553 33"],
+      email: "evnye.hotel@hilton.com",
+      website: "hilton.com",
+      location: "center",
+    },
+    {
+      name: "Golden palace",
+      address: "Northern11",
+      options: ["gym", "sauna"],
+      tel: ["+374 12 22 00 00"],
+      email: "info@goldenpalacehotel.am",
+      website: "goldenpalacehotel.am",
+      location: "5' center",
+    },
+    {
+      name: "Armenia Marriott",
+      address: "Amiryan street",
+      options: ["pool", "gym"],
+      tel: ["+374 10 59 90 00"],
+      email: "armenia.marriott@marriott.com",
+      website: "marriott.com",
+      location: "center",
+    },
+    {
+      name: "National by stellar",
+      address: "Amiryan street4/3",
+      options: ["pool", "gym", "spa"],
+      tel: ["+374 10 57 40 00"],
+      email: "info@hotelnational.am",
+      website: "hotelnational.am",
+      location: "center",
+    },
+    {
+      name: "Best western 4*",
+      address: "Italy street",
+      options: ["pool", "souna"],
+      tel: ["+374 10 59 11 99"],
+      email: "info@congresshotelyerevan.com",
+      website: "bestwestern.fr",
+      location: "center",
+    },
+    {
+      name: "Ramanda",
+      address: "pavstos busand street15",
+      options: ["gym", "souna"],
+      tel: ["+374 11 20 04 00"],
+      email: "info@ramanda.am",
+      website: "wyndhotels.com",
+      location: "center",
+    },
+    {
+      name: "Republic",
+      address: "Amiryan street7/1",
+      options: ["massage"],
+      tel: ["+374 11 99 00 00"],
+      email: "info@republichotel.am",
+      website: "republichotel.am",
+      location: "center",
+    },
+    {
+      name: "Dynast",
+      address: "Hovsep emin street52",
+      options: ["pool", "gym", "spa"],
+      tel: ["+374 10 33 33 10"],
+      email: "info@dynastyerevan",
+      website: "dynastyerevan.com",
+      location: "5' center",
+    },
+    {
+      name: "Ani plaza",
+      address: "Sayat-nova 19",
+      options: ["pool", "gym", "sauna"],
+      tel: ["+374 10 58 95 00"],
+      email: "info@anihotel.com",
+      website: "anihotel.com",
+      location: "15' center",
+    },
+    {
+      name: "Erebuni",
+      address: "Vazgen sargsyan26/4",
+      options: [],
+      tel: ["+374 60 48 05 05"],
+      email: "info@erebunihotel.am",
+      website: "erebunihotel.am",
+      location: "center",
+    },
+    {
+      name: "Yerevan place",
+      address: "Vazgen sargsyan26/1",
+      options: ["gym"],
+      tel: ["+374 11 22 12 34"],
+      email: "sale@evnplace.com",
+      website: "yerevanplace.com",
+      location: "center",
+    },
+    {
+      name: "Ararat",
+      address: "grigor lusavorich7",
+      options: ["pool", "gym", "souna"],
+      tel: ["+374 99 07 75 54"],
+      email: "reservation@ararathotel.am",
+      website: "ararathotel.am",
+      location: "5'center",
+    },
+    {
+      name: "Nacho",
+      address: "yervand kochar7/4",
+      options: ["pool", "sauna"],
+      tel: ["+374 95 74 07 44"],
+      email: "hotelnachoyerevan@gmail.com",
+      website: "nachohotel.am",
+      location: "7'center",
+    },
+    {
+      name: "Paris",
+      address: "Amiryan street 4/6",
+      options: ["gym"],
+      tel: ["+374 60 60 00 60"],
+      email: "info@parishotel.am",
+      website: "parishotel.am",
+      location: "center",
+    },
+    {
+      name: "Metropol",
+      address: "mashtots 2/2 Ave",
+      options: ["pool", "sauna"],
+      tel: ["+374 10 51 07 00"],
+      email: "metropol@metropol.am",
+      website: "metropol.am",
+      location: "5'center",
+    },
+    {
+      name: "Messier53",
+      address: "vardanants street15/4",
+      options: ["pool", "gym", "spa"],
+      tel: ["+374 95 53 00 53"],
+      email: "info@messier53hotel.com",
+      website: "messier53hotel.com",
+      location: "5'center",
+    },
+    {
+      name: "Sphera by stellar",
+      address: "artsakh7 Ave",
+      options: ["gym"],
+      tel: ["+374 33 00 22 76"],
+      email: "spherabystellar@gmail.com",
+      website: "en.sphera-stellarhotels.ru",
+      location: "center",
+    },
+    {
+      name: "Royal plaza",
+      address: "martiros saryan street9",
+      options: [],
+      tel: ["+374 33 62 88 22"],
+      email: "info@royalplaza-stellarhotels.ru",
+      website: "royalplaza.stellarhotels.ru",
+      location: "5'center",
+    },
+    {
+      name: "Holiday Inn express",
+      address: "karena street 97/2",
+      options: [],
+      tel: ["+374 12 22 24 40"],
+      email: "reservation@hiexyerevan.am",
+      website: "hiexpress.am",
+      location: "5'center",
+    },
+    {
+      name: "President",
+      address: "dzorapi street72",
+      options: ["pool"],
+      tel: ["+374 10 53 53 32"],
+      email: "sale@presidenthotel.am",
+      website: "presidenthotel.am",
+      location: "5'center",
+    },
+    {
+      name: "plaza viktoria",
+      address: "nar-dos street2",
+      options: [],
+      tel: ["+374 91 15 22 00"],
+      email: "info@hotelplazaviktoria.am",
+      website: "hotelplazaviktoria.am",
+      location: "10' center",
+    },
+    {
+      name: "Aquatek",
+      address: "Myasnikyan street 40/2",
+      options: ["pool", "gym", "spa"],
+      tel: ["+374 91 50 02 02"],
+      email: "hotel-reservation@aquatek.am",
+      website: "aquatek.hotelsofarmenia.com",
+      location: "10' center",
+    },
+    {
+      name: "Juliet",
+      address: "Nairi zaryan street74",
+      options: [],
+      tel: ["+374 94 65 64 54"],
+      email: "arman22555@gmail.com",
+      website: "juliet.hotelsofarmenia.com",
+      location: "16' center",
+    },
+    {
+      name: "New Bella",
+      address: "yervand kochar street6",
+      options: ["gym"],
+      tel: ["+374 10 24 04 99"],
+      email: "info@bella.am",
+      website: "newbella.yerevanahotel.com",
+      location: "5' center",
+    },
+    {
+      name: "Nice",
+      address: "sevan street 5/1",
+      options: [],
+      tel: ["+374 43 50 07 00"],
+      email: "nicehotelyerevan@gmail.com",
+      website: "nice-hotel-yerevan.hotelsofarmenia.com",
+      location: "10'center",
+    },
+    {
+      name: "Mashtots",
+      address: "40A mesrop mashtots Ave",
+      options: [],
+      tel: ["+374 11 57 00 77"],
+      email: "",
+      website: "mashtots.hotelsofarmenia.com",
+      location: "10' center",
+    },
+    {
+      name: "MarNar",
+      address: "Admiral isakov3/1",
+      options: [],
+      tel: ["+37477 91 91 57"],
+      email: "No email",
+      website: "MarNar hotel.yerevan-hotel.top",
+      location: "8'center",
+    },
+    {
+      name: "Amaras",
+      address: "Tairov street46",
+      options: [],
+      tel: ["+374 91 25 55 71"],
+      email: "No email",
+      website: "amaras.hotelsofarmenia.com",
+      location: "10' center",
+    },
+  ];
+
+  try {
+    // دریافت آخرین هتل برای شروع ID از عدد بعدی
+    const lastHotel = await Hotel.findOne().sort({ id: -1 });
+    let nextId = lastHotel ? lastHotel.id + 1 : 1;
+
+    // اضافه کردن ID به هر هتل
+    const hotelsWithIds = hotelsData.map((hotel) => ({
+      ...hotel,
+      id: nextId++,
+      units: [],
+      ratesInfo: {
+        hotelCost: 0,
+        referralCommission: 0,
+        referralCommissionType: "percentage",
+        extraAdultCommission: 0,
+        extraAdultCommissionType: "percentage",
+        extraChildCommission: 0,
+        extraChildCommissionType: "percentage",
+      },
+    }));
+
+    const createdHotels = await Hotel.insertMany(hotelsWithIds);
+    res.status(201).json({
+      success: true,
+      message: `${createdHotels.length} هتل با موفقیت افزوده شد.`,
+      data: createdHotels,
+    });
+  } catch (error) {
+    console.error("Error adding hotels:", error);
+    res.status(500).json({
+      success: false,
+      message: "خطای سرور",
+      error: error.message,
+    });
+  }
+});
+
+app.post("/deleteAll", async (req, res) => {
+  try {
+    await Hotel.deleteMany({});
+    res.status(200).json({
+      success: true,
+      message: "All hotels deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+});
 // ============================================
 // GET ALL HOTELS
 // @route   GET /api/hotels
@@ -154,7 +513,7 @@ app.get("/", (req, res) => {
 // ============================================
 app.get("/api/hotels", async (req, res) => {
   try {
-    const { search, page = 1, limit = 10 } = req.query;
+    const { search, page = 1, limit = 300 } = req.query;
 
     let query = {};
 
@@ -546,6 +905,8 @@ app.put("/api/hotels/:id", async (req, res) => {
   try {
     // ابتدا هتل فعلی را بگیر
     const hotel = await Hotel.findOne({ _id: req.params.id });
+
+    console.log("unit 1 : ", req.body.units[0].pricePerNight);
 
     if (!hotel) {
       return res.status(404).json({
