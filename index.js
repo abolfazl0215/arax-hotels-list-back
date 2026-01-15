@@ -1,5 +1,6 @@
 // ============================================
 // Complete Hotel Management API - Single File
+// با تاریخچه قیمت برای واحدها
 // ============================================
 
 const express = require("express");
@@ -56,11 +57,9 @@ const hotelSchema = new mongoose.Schema(
     units: [
       {
         id: Number,
-
         name: String,
         quanntity: Number,
         squareMeters: Number,
-
         photos: [String],
         numOftwinBeds: Number,
         numOfSingleBeds: Number,
@@ -68,10 +67,20 @@ const hotelSchema = new mongoose.Schema(
         numOfQueenBeds: Number,
         amenities: [String],
         numOfFits: Number,
+        // قیمت‌های فعلی
         pricePerNight: [
           {
             season: String,
             price: Number,
+          },
+        ],
+        // تاریخچه قیمت‌ها
+        priceHistory: [
+          {
+            season: String,
+            price: Number,
+            changedAt: { type: Date, default: Date.now },
+            changedBy: String, // اختیاری: برای ذخیره کاربری که تغییر داده
           },
         ],
       },
@@ -83,6 +92,31 @@ const hotelSchema = new mongoose.Schema(
 const Hotel = mongoose.model("hotels", hotelSchema);
 
 // ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+// تابع برای ذخیره قیمت‌های قبلی در تاریخچه
+function savePriceHistory(unit, newPrices) {
+  if (!unit.priceHistory) {
+    unit.priceHistory = [];
+  }
+
+  // اگر قیمت‌های قبلی وجود دارد، آنها را به تاریخچه اضافه کن
+  if (unit.pricePerNight && unit.pricePerNight.length > 0) {
+    unit.pricePerNight.forEach((oldPrice) => {
+      unit.priceHistory.push({
+        season: oldPrice.season,
+        price: oldPrice.price,
+        changedAt: new Date(),
+      });
+    });
+  }
+
+  // قیمت‌های جدید را تنظیم کن
+  unit.pricePerNight = newPrices;
+}
+
+// ============================================
 // API ROUTES
 // ============================================
 
@@ -91,20 +125,23 @@ app.get("/", (req, res) => {
   res.json({
     success: true,
     message: "Hotel Management API is running",
-    version: "1.0.0",
+    version: "2.0.0 (with Price History)",
     endpoints: {
       "GET /api/hotels": "Get all hotels (with search, pagination)",
       "GET /api/hotels/:id": "Get single hotel by ID",
+      "GET /api/hotels/:id/units/:unitId/price-history":
+        "Get price history for a unit",
       "POST /api/hotels": "Create new hotel",
       "POST /api/hotels/:id/units":
         "Create a unit (room) for a hotel",
       "PUT /api/hotels/:id/units/:unitId":
-        "Update a unit for a hotel",
+        "Update a unit for a hotel (saves price history)",
+      "PUT /api/hotels/:id/units/:unitId/prices":
+        "Update only prices for a unit (saves history)",
       "DELETE /api/hotels/:id/units/:unitId":
         "Delete a unit for a hotel",
       "PUT /api/hotels/:id": "Update hotel",
       "DELETE /api/hotels/:id": "Delete hotel",
-      "POST /api/hotels/seed": "Seed database with sample data",
     },
   });
 });
@@ -156,9 +193,89 @@ app.get("/api/hotels", async (req, res) => {
 });
 
 // ============================================
+// GET SINGLE HOTEL
+// @route   GET /api/hotels/:id
+// @desc    Get hotel by ID
+// ============================================
+app.get("/api/hotels/:id", async (req, res) => {
+  try {
+    const hotel = await Hotel.findOne({ id: Number(req.params.id) });
+
+    if (!hotel) {
+      return res.status(404).json({
+        success: false,
+        message: "Hotel not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: hotel,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+});
+
+// ============================================
+// GET PRICE HISTORY FOR A UNIT
+// @route   GET /api/hotels/:id/units/:unitId/price-history
+// @desc    Get complete price history for a specific unit
+// ============================================
+app.get(
+  "/api/hotels/:id/units/:unitId/price-history",
+  async (req, res) => {
+    try {
+      const hotel = await Hotel.findOne({
+        id: Number(req.params.id),
+      });
+
+      if (!hotel) {
+        return res.status(404).json({
+          success: false,
+          message: "Hotel not found",
+        });
+      }
+
+      const unitId = Number(req.params.unitId);
+      const unit = hotel.units.find((u) => u.id === unitId);
+
+      if (!unit) {
+        return res.status(404).json({
+          success: false,
+          message: "Unit not found",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: {
+          unitId: unit.id,
+          unitName: unit.name,
+          currentPrices: unit.pricePerNight || [],
+          priceHistory: unit.priceHistory || [],
+          totalHistoryRecords: (unit.priceHistory || []).length,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Server Error",
+        error: error.message,
+      });
+    }
+  },
+);
+
+// ============================================
 // UNIT (ROOM) ROUTES
 // Create unit: POST /api/hotels/:id/units
 // Update unit: PUT /api/hotels/:id/units/:unitId
+// Update prices only: PUT /api/hotels/:id/units/:unitId/prices
 // Delete unit: DELETE /api/hotels/:id/units/:unitId
 // ============================================
 
@@ -198,6 +315,7 @@ app.post("/api/hotels/:id/units", async (req, res) => {
       hotel.units && hotel.units.length
         ? Math.max(...hotel.units.map((u) => u.id || 0))
         : 0;
+
     const newUnit = {
       id: maxUnitId + 1,
       name,
@@ -211,6 +329,7 @@ app.post("/api/hotels/:id/units", async (req, res) => {
       amenities,
       numOfFits,
       pricePerNight,
+      priceHistory: [], // شروع با تاریخچه خالی
     };
 
     hotel.units.push(newUnit);
@@ -238,16 +357,19 @@ app.put("/api/hotels/:id/units/:unitId", async (req, res) => {
         .json({ success: false, message: "Hotel not found" });
 
     const unitId = Number(req.params.unitId);
-    const unit = hotel.units.find(
-      (u) => u.id === unitId || String(u.id) === String(unitId),
-    );
+    const unit = hotel.units.find((u) => u.id === unitId);
 
     if (!unit)
       return res
         .status(404)
         .json({ success: false, message: "Unit not found" });
 
-    // Only allow updates to known fields
+    // اگر قیمت جدید ارسال شده، قیمت قبلی را در تاریخچه ذخیره کن
+    if (req.body.pricePerNight && req.body.pricePerNight.length > 0) {
+      savePriceHistory(unit, req.body.pricePerNight);
+    }
+
+    // بقیه فیلدها را بروزرسانی کن (به جز pricePerNight که در بالا مدیریت شد)
     const updatable = [
       "name",
       "quanntity",
@@ -259,7 +381,6 @@ app.put("/api/hotels/:id/units/:unitId", async (req, res) => {
       "numOfQueenBeds",
       "amenities",
       "numOfFits",
-      "pricePerNight",
     ];
 
     updatable.forEach((key) => {
@@ -268,9 +389,74 @@ app.put("/api/hotels/:id/units/:unitId", async (req, res) => {
 
     await hotel.save();
 
-    res
-      .status(200)
-      .json({ success: true, message: "Unit updated", data: unit });
+    res.status(200).json({
+      success: true,
+      message: "Unit updated with price history saved",
+      data: {
+        ...unit.toObject(),
+        priceHistoryCount: unit.priceHistory
+          ? unit.priceHistory.length
+          : 0,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+});
+
+// ============================================
+// UPDATE UNIT PRICES ONLY
+// @route   PUT /api/hotels/:id/units/:unitId/prices
+// @desc    Update only prices for a unit (specialized endpoint)
+// ============================================
+app.put("/api/hotels/:id/units/:unitId/prices", async (req, res) => {
+  try {
+    const hotel = await Hotel.findOne({ id: Number(req.params.id) });
+
+    if (!hotel)
+      return res
+        .status(404)
+        .json({ success: false, message: "Hotel not found" });
+
+    const unitId = Number(req.params.unitId);
+    const unit = hotel.units.find((u) => u.id === unitId);
+
+    if (!unit)
+      return res
+        .status(404)
+        .json({ success: false, message: "Unit not found" });
+
+    if (
+      !req.body.pricePerNight ||
+      !Array.isArray(req.body.pricePerNight)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "pricePerNight array is required",
+      });
+    }
+
+    // ذخیره قیمت‌های قبلی در تاریخچه
+    savePriceHistory(unit, req.body.pricePerNight);
+
+    await hotel.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Prices updated and history saved",
+      data: {
+        unitId: unit.id,
+        unitName: unit.name,
+        currentPrices: unit.pricePerNight,
+        priceHistoryCount: unit.priceHistory
+          ? unit.priceHistory.length
+          : 0,
+      },
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -313,42 +499,12 @@ app.delete("/api/hotels/:id/units/:unitId", async (req, res) => {
 });
 
 // ============================================
-// GET SINGLE HOTEL
-// @route   GET /api/hotels/:id
-// @desc    Get hotel by ID
-// ============================================
-app.get("/api/hotels/:id", async (req, res) => {
-  try {
-    const hotel = await Hotel.findOne({ id: Number(req.params.id) });
-
-    if (!hotel) {
-      return res.status(404).json({
-        success: false,
-        message: "Hotel not found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: hotel,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
-  }
-});
-
-// ============================================
 // CREATE HOTEL
 // @route   POST /api/hotels
 // @desc    Create new hotel
 // ============================================
 app.post("/api/hotels", async (req, res) => {
   try {
-    // Get the highest ID and increment
     const lastHotel = await Hotel.findOne().sort({ id: -1 });
     const newId = lastHotel ? lastHotel.id + 1 : 1;
 
@@ -357,7 +513,13 @@ app.post("/api/hotels", async (req, res) => {
       id: newId,
     };
 
-    // return console.log({ hotelData });
+    // اطمینان از اینکه هر واحد priceHistory دارد
+    if (hotelData.units && Array.isArray(hotelData.units)) {
+      hotelData.units = hotelData.units.map((unit) => ({
+        ...unit,
+        priceHistory: unit.priceHistory || [],
+      }));
+    }
 
     const hotel = await Hotel.create(hotelData);
 
@@ -388,8 +550,6 @@ app.put("/api/hotels/:id", async (req, res) => {
       { new: true },
     );
 
-    console.log(req.body);
-
     if (!hotel) {
       return res.status(404).json({
         success: false,
@@ -402,7 +562,6 @@ app.put("/api/hotels/:id", async (req, res) => {
       message: "Hotel updated successfully",
       data: hotel,
     });
-    console.log("Hotel updated successfully");
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -418,7 +577,6 @@ app.put("/api/hotels/:id", async (req, res) => {
 // @desc    Delete hotel by ID
 // ============================================
 app.delete("/api/hotels/:id", async (req, res) => {
-  console.log({ id: req.params.id });
   try {
     const hotel = await Hotel.findOneAndDelete({
       _id: req.params.id,
@@ -447,23 +605,14 @@ app.delete("/api/hotels/:id", async (req, res) => {
 
 // 404 Handler
 app.use((req, res) => {
-  // Create a compact field combining stars and unit count for tighter UI display
-  const hotelsData = hotels.map((h) => {
-    const obj = typeof h.toObject === "function" ? h.toObject() : h;
-    obj.starsAndUnits = `${obj.stars || 0}★ · ${
-      obj.units ? obj.units.length : 0
-    }`;
-    return obj;
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
   });
+});
 
-  res.status(200).json({
-    success: true,
-    count: hotels.length,
-    total,
-    page: pageNum,
-    pages: Math.ceil(total / limitNum),
-    data: hotelsData,
-  });
+// Error Handler
+app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
     success: false,
