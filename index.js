@@ -544,11 +544,8 @@ app.post("/api/hotels", async (req, res) => {
 // ============================================
 app.put("/api/hotels/:id", async (req, res) => {
   try {
-    const hotel = await Hotel.findOneAndUpdate(
-      { _id: req.params.id },
-      req.body,
-      { new: true },
-    );
+    // ابتدا هتل فعلی را بگیر
+    const hotel = await Hotel.findOne({ _id: req.params.id });
 
     if (!hotel) {
       return res.status(404).json({
@@ -557,10 +554,54 @@ app.put("/api/hotels/:id", async (req, res) => {
       });
     }
 
+    // اگر units در req.body وجود دارد، باید قیمت‌ها را چک کنیم
+    if (req.body.units && Array.isArray(req.body.units)) {
+      req.body.units.forEach((newUnit) => {
+        // واحد قبلی را پیدا کن
+        const oldUnit = hotel.units.find((u) => u.id === newUnit.id);
+
+        if (oldUnit && newUnit.pricePerNight) {
+          // چک کن که آیا قیمت تغییر کرده
+          const pricesChanged =
+            JSON.stringify(oldUnit.pricePerNight) !==
+            JSON.stringify(newUnit.pricePerNight);
+
+          if (
+            pricesChanged &&
+            oldUnit.pricePerNight &&
+            oldUnit.pricePerNight.length > 0
+          ) {
+            // قیمت‌های قبلی را به تاریخچه اضافه کن
+            if (!newUnit.priceHistory) {
+              newUnit.priceHistory = oldUnit.priceHistory || [];
+            }
+
+            oldUnit.pricePerNight.forEach((oldPrice) => {
+              newUnit.priceHistory.push({
+                season: oldPrice.season,
+                price: oldPrice.price,
+                changedAt: new Date(),
+              });
+            });
+          } else {
+            // اگر قیمت تغییر نکرده، تاریخچه قبلی را حفظ کن
+            newUnit.priceHistory = oldUnit.priceHistory || [];
+          }
+        }
+      });
+    }
+
+    // حالا هتل را با داده‌های جدید بروزرسانی کن
+    const updatedHotel = await Hotel.findOneAndUpdate(
+      { _id: req.params.id },
+      req.body,
+      { new: true },
+    );
+
     res.status(200).json({
       success: true,
       message: "Hotel updated successfully",
-      data: hotel,
+      data: updatedHotel,
     });
   } catch (error) {
     res.status(500).json({
