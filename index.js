@@ -35,6 +35,7 @@ const hotelSchema = new mongoose.Schema(
     name: String,
     address: String,
     location: Number,
+    distanceToCenter: Number,
     tel: [String],
     email: String,
     website: String,
