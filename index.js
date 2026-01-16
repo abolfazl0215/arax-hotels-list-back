@@ -505,12 +505,14 @@ app.post("/deleteAll", async (req, res) => {
     });
   }
 });
+
 // ============================================
 // GET ALL HOTELS
 // @route   GET /api/hotels
 // @desc    Get all hotels with optional filters
 // @query   search, page, limit
 // ============================================
+
 app.get("/api/hotels", async (req, res) => {
   try {
     const { search, page = 1, limit = 300 } = req.query;
@@ -556,6 +558,7 @@ app.get("/api/hotels", async (req, res) => {
 // @route   GET /api/hotels/:id
 // @desc    Get hotel by ID
 // ============================================
+
 app.get("/api/hotels/:id", async (req, res) => {
   try {
     const hotel = await Hotel.findOne({ id: Number(req.params.id) });
@@ -585,6 +588,7 @@ app.get("/api/hotels/:id", async (req, res) => {
 // @route   GET /api/hotels/:id/units/:unitId/price-history
 // @desc    Get complete price history for a specific unit
 // ============================================
+
 app.get(
   "/api/hotels/:id/units/:unitId/price-history",
   async (req, res) => {
@@ -772,6 +776,7 @@ app.put("/api/hotels/:id/units/:unitId", async (req, res) => {
 // @route   PUT /api/hotels/:id/units/:unitId/prices
 // @desc    Update only prices for a unit (specialized endpoint)
 // ============================================
+
 app.put("/api/hotels/:id/units/:unitId/prices", async (req, res) => {
   try {
     const hotel = await Hotel.findOne({ id: Number(req.params.id) });
@@ -862,6 +867,7 @@ app.delete("/api/hotels/:id/units/:unitId", async (req, res) => {
 // @route   POST /api/hotels
 // @desc    Create new hotel
 // ============================================
+
 app.post("/api/hotels", async (req, res) => {
   try {
     const lastHotel = await Hotel.findOne().sort({ id: -1 });
@@ -901,12 +907,13 @@ app.post("/api/hotels", async (req, res) => {
 // @route   PUT /api/hotels/:id
 // @desc    Update hotel by ID
 // ============================================
+
 app.put("/api/hotels/:id", async (req, res) => {
   try {
     // ابتدا هتل فعلی را بگیر
     const hotel = await Hotel.findOne({ _id: req.params.id });
 
-    console.log("unit 1 : ", req.body.units[0].pricePerNight);
+    
 
     if (!hotel) {
       return res.status(404).json({
@@ -965,6 +972,7 @@ app.put("/api/hotels/:id", async (req, res) => {
       data: updatedHotel,
     });
   } catch (error) {
+    console.log("error : ", error);
     res.status(500).json({
       success: false,
       message: "Server Error",
